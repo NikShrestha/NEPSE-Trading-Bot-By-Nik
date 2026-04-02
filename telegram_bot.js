@@ -83,7 +83,7 @@ async function sendTelegram(message) {
     
     try {
         const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-        await fetch(url, {
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
@@ -93,8 +93,13 @@ async function sendTelegram(message) {
                 disable_web_page_preview: true
             })
         });
+        
+        const data = await response.json();
+        if (!data.ok) {
+            console.error("❌ Telegram Error:", data.description);
+        }
     } catch (e) {
-        console.error("Telegram send failed:", e.message);
+        console.error("❌ Telegram send failed:", e.message);
     }
 }
 
