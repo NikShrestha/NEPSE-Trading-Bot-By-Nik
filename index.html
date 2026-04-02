@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🇳🇵 NEPSE Paper Trading Simulator</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #080810;
+            --card-bg: #0f0f20;
+            --text-main: #e0e0e0;
+            --text-dim: #8b8b9e;
+            --accent-blue: #00c8ff;
+            --accent-red: #dc143c;
+            --profit-green: #00ff88;
+            --loss-red: #ff3860;
+            --border-color: #1a1a2e;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-mono);
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-size: 13px;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-blue); }
+
+        /* Typography & Utilities */
+        .text-green { color: var(--profit-green); }
+        .text-red { color: var(--loss-red); }
+        .text-blue { color: var(--accent-blue); }
+        .text-yellow { color: #ffd700; }
+        .blink { animation: blinker 1.5s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* Layout */
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--accent-blue);
+            box-shadow: 0 0 15px rgba(0, 200, 255, 0.2);
+        }
+
+        .market-banner {
+            text-align: center;
+            padding: 8px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 15px;
+            gap: 15px;
+        }
+
+        .right-panel {
+            flex: 1;
+            min-width: 350px;
+            background-color: var(--card-bg);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* Cards & Grids */
+        .bot-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            position: relative;
+            transition: box-shadow 0.3s;
+        }
+        
+        .card:hover {
+            box-shadow: 0 0 10px rgba(0, 200, 255, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #2a2a3e;
+            font-weight: bold;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .chart-container {
+            height: 250px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px;
+        }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { color: var(--text-dim); font-weight: normal; top: 0; position: sticky; background: var(--card-bg); }
+        tbody tr:hover { background-color: rgba(255,255,255,0.02); }
+        .table-wrapper { max-height: 250px; overflow-y: auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; }
+
+        /* Panels */
+        .panel-header { padding: 15px; background: #141425; border-bottom: 1px solid var(--border-color); font-weight: bold; }
+        .log-container { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .log-entry {
+            background: #12121c; border: 1px solid #2a2a3e; border-radius: 4px; padding: 10px; font-size: 12px;
+        }
+        .log-entry.trade { border-left: 3px solid var(--accent-blue); }
+        .log-entry.sell { border-left: 3px solid var(--profit-green); }
+        .log-entry.stop { border-left: 3px solid var(--loss-red); }
+
+        .edu-container { padding: 15px; background: #1a1a2e; border-top: 1px solid var(--border-color); }
+        .edu-card { background: #080810; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #2a2a3e; }
+        
+        /* Badges */
+        .badge { padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold; }
+        .badge.uc { background: var(--accent-blue); color: #000; }
+        .badge.lc { background: var(--loss-red); color: #fff; }
+        .badge.a { background: #4caf50; color: #fff; }
+        
+        /* Admin */
+        .admin-bar {
+            background-color: #1a1a2e; padding: 10px 20px; border-top: 1px solid var(--accent-red);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        button {
+            background: #2a2a3e; color: #fff; border: 1px solid var(--border-color);
+            padding: 5px 12px; font-family: var(--font-mono); cursor: pointer; border-radius: 3px;
+        }
+        button:hover { background: var(--accent-blue); color: #000; }
+        button.btn-red:hover { background: var(--accent-red); color: #fff; }
+
+        /* Modal */
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: var(--card-bg); padding: 20px; border: 1px solid var(--accent-blue);
+            width: 400px; border-radius: 6px;
+        }
+        
+        .tabs { display: flex; margin-bottom: 10px; }
+        .tab { padding: 8px 15px; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab.active { border-bottom-color: var(--accent-blue); color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+
+    <div class="header-bar">
+        <div>🇳🇵 NEPSE SIMULATOR</div>
+        <div id="nst-clock">NST: 00:00:00</div>
+        <div>Index: <span id="nepse-index-val">2,100.00</span></div>
+        <div>
+            Total Port: <span id="total-port-val" class="text-green">रू 40,000.00</span> | 
+            P&L: <span id="total-pnl-val" class="text-green">+रू 0.00 (0.00%)</span>
+        </div>
+        <div><button onclick="toggleBotEngine()" id="btn-master-play">▶ RUN ALL BOTS</button></div>
+    </div>
+
+    <div id="market-status-banner" class="market-banner" style="background-color: #1a1a2e; color: #aaa;">
+        🔴 INITIALIZING DATA...
+    </div>
+
+    <div class="main-container">
+        <div class="left-panel">
+            
+            <!-- Bot Cards -->
+            <div class="bot-grid">
+                <div class="card" id="card-bot1">
+                    <div class="card-header"><span class="text-blue">🛡️ SENTINEL</span> <span id="bot1-status" class="badge">IDLE</span></div>
+                    <div class="metric-row"><span>Portfolio:</span> <span id="bot1-port">रू 10,000.00</span></div>
+                    <div class="metric-row"><span>P&L:</span> <span id="bot1-pnl" class="text-green">+रू 0.00</span></div>
+                    <div class="metric-row"><span>Win Rate:</span> <span id="bot1-winrate">0.0%</span></div>
+                    <div class="metric-row"><span>Open / Settling:</span> <span id="bot1-open">0 / 0</span></div>
+                    <div class="metric-row"><span>Cash:</span> <span id="bot1-cash">रू 10,000.00</span></div>
+                </div>
+                <div class="card" id="card-bot2">
+                    <div class="card-header"><span class="text-blue">💧 HYDRO HAWK</span> <span id="bot2-status" class="badge">IDLE</span></div>
+                    <div class="metric-row"><span>Portfolio:</span> <span id="bot2-port">रू 10,000.00</span></div>
+                    <div class="metric-row"><span>P&L:</span> <span id="bot2-pnl" class="text-green">+रू 0.00</span></div>
+                    <div class="metric-row"><span>Win Rate:</span> <span id="bot2-winrate">0.0%</span></div>
+                    <div class="metric-row"><span>Open / Settling:</span> <span id="bot2-open">0 / 0</span></div>
+                    <div class="metric-row"><span>Cash:</span> <span id="bot2-cash">रू 10,000.00</span></div>
+                </div>
+                <div class="card" id="card-bot3">
+                    <div class="card-header"><span class="text-blue">💰 DIVIDEND</span> <span id="bot3-status" class="badge">IDLE</span></div>
+                    <div class="metric-row"><span>Portfolio:</span> <span id="bot3-port">रू 10,000.00</span></div>
+                    <div class="metric-row"><span>P&L:</span> <span id="bot3-pnl" class="text-green">+रू 0.00</span></div>
+                    <div class="metric-row"><span>Win Rate:</span> <span id="bot3-winrate">0.0%</span></div>
+                    <div class="metric-row"><span>Open / Settling:</span> <span id="bot3-open">0 / 0</span></div>
+                    <div class="metric-row"><span>Cash:</span> <span id="bot3-cash">रू 10,000.00</span></div>
+                </div>
+                <div class="card" id="card-bot4">
+                    <div class="card-header"><span class="text-blue">👑 APEX NEPSE</span> <span id="bot4-status" class="badge">IDLE</span></div>
+                    <div class="metric-row"><span>Portfolio:</span> <span id="bot4-port">रू 10,000.00</span></div>
+                    <div class="metric-row"><span>P&L:</span> <span id="bot4-pnl" class="text-green">+रू 0.00</span></div>
+                    <div class="metric-row"><span>Win Rate:</span> <span id="bot4-winrate">0.0%</span></div>
+                    <div class="metric-row"><span>Open / Settling:</span> <span id="bot4-open">0 / 0</span></div>
+                    <div class="metric-row"><span>Cash:</span> <span id="bot4-cash">रू 10,000.00</span></div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="equityChart"></canvas>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="switchMainTab('scanner')">Market Scanner</div>
+                <div class="tab" onclick="switchMainTab('positions')">Active Positions</div>
+                <div class="tab" onclick="switchMainTab('history')">Trade History</div>
+            </div>
+
+            <!-- Tables -->
+            <div id="tab-scanner" class="table-wrapper">
+                <table id="table-scanner">
+                    <thead><tr><th>Stock</th><th>Sector</th><th>Cls</th><th>LTP</th><th>Chg%</th><th>RSI</th><th>EMA(9/21)</th><th>MACD</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="tab-positions" class="table-wrapper" style="display:none;">
+                <table id="table-positions">
+                    <thead><tr><th>Bot</th><th>Stock</th><th>Kitta</th><th>Entry રૂ</th><th>Current રૂ</th><th>P&L%</th><th>Net P&L</th><th>T+2 Status</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="tab-history" class="table-wrapper" style="display:none;">
+                <table id="table-history">
+                    <thead><tr><th>Bot</th><th>Stock</th><th>Entry</th><th>Exit</th><th>Net P&L</th><th>Hold Days</th><th>Reason</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div class="right-panel">
+            <div class="panel-header">LIVE REASONING LOG</div>
+            <div class="log-container" id="live-log">
+                <!-- Logs injected here -->
+            </div>
+            <div class="edu-container">
+                <div style="margin-bottom:10px; font-weight:bold; color:var(--accent-blue);">NEPSE Education</div>
+                <div class="edu-card">
+                    <strong>T+2 SETTLEMENT</strong><br>
+                    <span style="color:var(--text-dim); font-size:11px;">Shares arrive 2 days after buying. You cannot sell unsettled shares. This prevents instant day-trading.</span>
+                </div>
+                <div class="edu-card">
+                    <strong>CIRCUIT BREAKERS</strong><br>
+                    <span style="color:var(--text-dim); font-size:11px;">Stocks can only move ±10% per day. +10% is Upper Circuit (UC), -10% is Lower Circuit (LC).</span>
+                </div>
+                <div class="edu-card">
+                    <strong>KITTA</strong><br>
+                    <span style="color:var(--text-dim); font-size:11px;">Shares are traded in whole units called Kitta. No fractional shares exist on NEPSE.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-bar">
+        <div>
+            Session: <span id="session-time">00:00</span> | 
+            Total Fees Paid: <span id="total-fees" class="text-red">रू 0.00</span> | 
+            <span class="text-yellow">Simulated Data Fallback Active</span>
+        </div>
+        <div>
+            <button onclick="document.getElementById('adminModal').style.display='flex'">⚙️ Settings</button>
+            <button class="btn-red" onclick="resetAll()">🗑️ Reset</button>
+        </div>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="adminModal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 15px;">Admin Settings</h2>
+            <div style="margin-bottom: 10px;">
+                <label><input type="checkbox" id="cfg-market-hours"> Respect Market Hours (11am-3pm NST)</label><br>
+                <small style="color:gray;">Uncheck to allow bots to trade 24/7 for simulation.</small>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label><input type="checkbox" id="cfg-real-fees" checked> Apply Real Fees & CGT</label>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label><input type="checkbox" id="cfg-t2" checked> Enforce T+2 Settlement</label>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label><input type="checkbox" id="cfg-circuit" checked> Apply ±10% Circuit Breakers</label>
+            </div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button onclick="document.getElementById('adminModal').style.display='none'">Close</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * 🇳🇵 NEPSE PAPER TRADING SIMULATOR - CORE LOGIC
+ */
+
+// --- 1. CONFIGURATION & STATE ---
+const CONFIG = {
+    startCapital: 10000,
+    tickMs: 3000, // Update every 3s
+    fee: { sebon: 0.00015, dp: 25 },
+    tax: { shortTerm: 0.075, longTerm: 0.05 },
+    respectHours: false, // Default off so user sees action immediately
+    respectFees: true,
+    respectT2: true,
+    respectCircuit: true
+};
+
+const SECTORS = {
+    BANK: "Commercial Bank",
+    HYDRO: "Hydropower",
+    LIFE: "Life Insurance",
+    MICRO: "Microfinance",
+    TELECOM: "Telecom"
+};
+
+// Realistic subset of NEPSE stocks
+const STOCK_UNIVERSE = [
+    { sym: "NABIL", sec: SECTORS.BANK, cls: "A", base: 1190, vol: 0.015 },
+    { sym: "NICA",  sec: SECTORS.BANK, cls: "A", base: 850,  vol: 0.015 },
+    { sym: "EBL",   sec: SECTORS.BANK, cls: "A", base: 600,  vol: 0.012 },
+    { sym: "PRVU",  sec: SECTORS.BANK, cls: "A", base: 450,  vol: 0.018 },
+    { sym: "UPPER", sec: SECTORS.HYDRO, cls: "A", base: 650, vol: 0.035 },
+    { sym: "CHCL",  sec: SECTORS.HYDRO, cls: "B", base: 400, vol: 0.03 },
+    { sym: "NHPC",  sec: SECTORS.HYDRO, cls: "B", base: 200, vol: 0.04 },
+    { sym: "NLICL", sec: SECTORS.LIFE,  cls: "A", base: 1200, vol: 0.02 },
+    { sym: "CBBL",  sec: SECTORS.MICRO, cls: "A", base: 1500, vol: 0.045 },
+    { sym: "SKBBL", sec: SECTORS.MICRO, cls: "A", base: 2100, vol: 0.05 },
+    { sym: "NTC",   sec: SECTORS.TELECOM, cls: "A", base: 950, vol: 0.01 }
+];
+
+let STATE = {
+    isRunning: false,
+    sessionStart: Date.now(),
+    simDayTracker: 0, // Used to fast-forward T+2 if market hours are ignored
+    marketStatus: "CLOSED",
+    nepseIndex: 2100,
+    bots: {
+        bot1: { id: "bot1", name: "Sentinel", port: 10000, cash: 10000, positions: [], history: [], wins: 0, losses: 0, fees: 0, isRunning: true },
+        bot2: { id: "bot2", name: "Hydro Hawk", port: 10000, cash: 10000, positions: [], history: [], wins: 0, losses: 0, fees: 0, isRunning: true },
+        bot3: { id: "bot3", name: "Dividend", port: 10000, cash: 10000, positions: [], history: [], wins: 0, losses: 0, fees: 0, isRunning: true },
+        bot4: { id: "bot4", name: "Apex", port: 10000, cash: 10000, positions: [], history: [], wins: 0, losses: 0, fees: 0, isRunning: true }
+    },
+    marketData: {}, // sym -> { current, history[], todayHigh, todayLow, prevClose, circuitStatus }
+    chartData: { labels: [], bot1: [], bot2: [], bot3: [], bot4: [] }
+};
+
+// --- 2. UTILITIES & FEES ---
+
+const formatNPR = (val) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'NPR' }).format(val).replace('NPR', 'रू');
+
+function calcBuyFees(value) {
+    if(!CONFIG.respectFees) return 0;
+    let commission = 0;
+    if(value <= 50000) commission = value * 0.004;
+    else if(value <= 500000) commission = value * 0.0037;
+    else if(value <= 2000000) commission = value * 0.0034;
+    else commission = value * 0.003;
+    return commission + (value * CONFIG.fee.sebon) + CONFIG.fee.dp;
+}
+
+function calcSellFees(value, profit, daysHeld) {
+    if(!CONFIG.respectFees) return 0;
+    let baseFees = calcBuyFees(value); // Same base logic
+    let cgt = profit > 0 ? (daysHeld < 365 ? profit * CONFIG.tax.shortTerm : profit * CONFIG.tax.longTerm) : 0;
+    return baseFees + cgt;
+}
+
+function getNST() {
+    let d = new Date();
+    // UTC+5:45
+    return new Date(d.getTime() + (5.75 * 3600 * 1000));
+}
+
+function checkMarketStatus() {
+    if(!CONFIG.respectHours) return "OPEN"; // Override
+    let nst = getNST();
+    let day = nst.getUTCDay(); // 0=Sun, 6=Sat. Prompt says Mon-Fri = 1-5
+    let h = nst.getUTCHours();
+    let m = nst.getUTCMinutes();
+    let timeVal = h + (m/60);
+
+    if(day < 1 || day > 5) return "CLOSED (Weekend)";
+    if(timeVal >= 10.75 && timeVal < 11.0) return "PRE-OPEN";
+    if(timeVal >= 11.0 && timeVal <= 15.0) return "OPEN";
+    return "CLOSED";
+}
+
+function isSettled(entrySimDay) {
+    if(!CONFIG.respectT2) return true;
+    return (STATE.simDayTracker - entrySimDay) >= 2;
+}
+
+// --- 3. PRICE SIMULATION ENGINE ---
+// Since real NEPSE API fails due to CORS, we simulate a realistic Brownian motion bounded by circuit breakers.
+function initMarketData() {
+    STOCK_UNIVERSE.forEach(s => {
+        // Pre-fill history to allow indicator calc immediately
+        let hist = [];
+        let cur = s.base;
+        for(let i=0; i<60; i++) {
+            cur = cur * (1 + (Math.random() - 0.5) * s.vol);
+            hist.push(cur);
+        }
+        STATE.marketData[s.sym] = {
+            sym: s.sym,
+            sec: s.sec,
+            cls: s.cls,
+            current: hist[hist.length-1],
+            prevClose: hist[hist.length-1],
+            todayHigh: hist[hist.length-1],
+            todayLow: hist[hist.length-1],
+            history: hist,
+            volBase: s.vol,
+            circuit: "NONE", // UC, LC, NONE
+        };
+    });
+}
+
+function tickMarket() {
+    if (STATE.marketStatus !== "OPEN") return;
+
+    let totalChg = 0;
+    Object.keys(STATE.marketData).forEach(sym => {
+        let md = STATE.marketData[sym];
+        
+        // Random walk
+        let change = (Math.random() - 0.48) * md.volBase; // Slight upward bias
+        let newPrice = md.current * (1 + change);
+
+        // Circuit breaker logic
+        let maxUp = md.prevClose * 1.10;
+        let maxDown = md.prevClose * 0.90;
+
+        md.circuit = "NONE";
+        if(CONFIG.respectCircuit) {
+            if(newPrice >= maxUp) { newPrice = maxUp; md.circuit = "UC"; }
+            if(newPrice <= maxDown) { newPrice = maxDown; md.circuit = "LC"; }
+        }
+
+        md.current = newPrice;
+        if(newPrice > md.todayHigh) md.todayHigh = newPrice;
+        if(newPrice < md.todayLow) md.todayLow = newPrice;
+
+        totalChg += change;
+    });
+
+    // Update NEPSE index (weighted approx)
+    STATE.nepseIndex = STATE.nepseIndex * (1 + (totalChg / STOCK_UNIVERSE.length) * 0.8);
+    
+    // Simulate day passing every 10 ticks for T+2 testing and chart movement
+    if(Math.random() < 0.1) {
+        STATE.simDayTracker++;
+        Object.keys(STATE.marketData).forEach(sym => {
+            let md = STATE.marketData[sym];
+            md.history.push(md.current);
+            if(md.history.length > 60) md.history.shift();
+            md.prevClose = md.current;
+            md.todayHigh = md.current;
+            md.todayLow = md.current;
+        });
+        updateChartData();
+    }
+}
+
+// --- 4. TECHNICAL INDICATORS ---
+function getIndicators(sym) {
+    let md = STATE.marketData[sym];
+    let h = md.history;
+    if(h.length < 26) return null;
+
+    let ema = (data, periods) => {
+        let k = 2 / (periods + 1);
+        let res = [data[0]];
+        for(let i=1; i<data.length; i++) res.push(data[i] * k + res[i-1] * (1 - k));
+        return res[res.length-1];
+    };
+
+    let rsi = (data, periods=14) => {
+        let gains=0, losses=0;
+        for(let i=data.length-periods; i<data.length; i++){
+            let diff = data[i] - data[i-1];
+            if(diff>0) gains+=diff; else losses-=diff;
+        }
+        let avgGain = gains/periods;
+        let avgLoss = losses/periods;
+        if (avgLoss === 0) return 100;
+        let rs = avgGain / avgLoss;
+        return 100 - (100 / (1 + rs));
+    };
+
+    let ema9 = ema(h, 9);
+    let ema21 = ema(h, 21);
+    let ema12 = ema(h, 12), ema26 = ema(h, 26);
+    let macdLine = ema12 - ema26;
+    let rsi14 = rsi(h, 14);
+
+    return { ema9, ema21, rsi14, macdLine, cur: md.current, circuit: md.circuit, cls: md.cls, sec: md.sec };
+}
+
+// --- 5. BOT LOGIC ---
+function logReasoning(botName, htmlContent) {
+    let log = document.getElementById("live-log");
+    let entry = document.createElement("div");
+    entry.className = `log-entry trade`;
+    entry.innerHTML = `<strong>${botName}</strong><br>${htmlContent}`;
+    log.prepend(entry);
+    if(log.children.length > 50) log.removeChild(log.lastChild);
+}
+
+function executeTrade(botId, type, sym, kitta, price, reason) {
+    let bot = STATE.bots[botId];
+    let val = kitta * price;
+    
+    if(type === 'BUY') {
+        let fees = calcBuyFees(val);
+        let totalCost = val + fees;
+        if(bot.cash >= totalCost) {
+            bot.cash -= totalCost;
+            bot.fees += fees;
+            bot.positions.push({
+                sym, kitta, entry: price, val, 
+                entryDay: STATE.simDayTracker, 
+                feesPaid: fees
+            });
+            logReasoning(`🟢 ${bot.name} BUY`, `Bought ${kitta} kitta of ${sym} @ ${formatNPR(price)}.<br>Cost: ${formatNPR(val)} | Fees: ${formatNPR(fees)}<br>Reason: ${reason}`);
+        }
+    } else {
+        // SELL
+        let posIdx = bot.positions.findIndex(p => p.sym === sym);
+        if(posIdx > -1) {
+            let pos = bot.positions[posIdx];
+            let gross = val - pos.val;
+            let daysHeld = STATE.simDayTracker - pos.entryDay;
+            let fees = calcSellFees(val, gross, daysHeld);
+            let net = gross - fees - pos.feesPaid;
+            
+            bot.cash += (val - fees);
+            bot.fees += fees;
+            if(net > 0) bot.wins++; else bot.losses++;
+            
+            bot.history.push({
+                sym, entry: pos.entry, exit: price, net, daysHeld, reason
+            });
+            bot.positions.splice(posIdx, 1);
+            
+            let html = `Sold ${kitta} kitta of ${sym} @ ${formatNPR(price)}.<br>Net P&L: <span class="${net>=0?'text-green':'text-red'}">${formatNPR(net)}</span><br>Reason: ${reason}`;
+            logReasoning(`🔴 ${bot.name} SELL`, html);
+        }
+    }
+}
+
+function evalSentinel() {
+    let bot = STATE.bots.bot1;
+    if(!bot.isRunning) return;
+
+    // SELL LOGIC
+    for (let i = bot.positions.length - 1; i >= 0; i--) {
+        let p = bot.positions[i];
+        if(!isSettled(p.entryDay)) continue; // T+2
+        let md = STATE.marketData[p.sym];
+        let ind = getIndicators(p.sym);
+        let chg = (md.current - p.entry) / p.entry;
+
+        if(chg >= 0.06 || ind.rsi14 > 65) executeTrade('bot1', 'SELL', p.sym, p.kitta, md.current, "Target reached or RSI overbought");
+        else if(chg <= -0.04) executeTrade('bot1', 'SELL', p.sym, p.kitta, md.current, "Stop loss triggered (-4%)");
+    }
+
+    // BUY LOGIC
+    if(bot.positions.length >= 4) return;
+    for(let sym of Object.keys(STATE.marketData)) {
+        let ind = getIndicators(sym);
+        if(!ind) continue;
+        if(ind.cls !== "A" || ind.circuit === "UC") continue;
+        if(bot.positions.find(p => p.sym === sym)) continue; // No double dip
+
+        if(ind.rsi14 < 35) { // Oversold
+            let alloc = bot.port * 0.20;
+            let kitta = Math.floor(alloc / ind.cur);
+            if(kitta > 0) executeTrade('bot1', 'BUY', sym, kitta, ind.cur, "Class A stock heavily oversold (RSI < 35). Value bounce setup.");
+            break; // Max 1 entry per tick
+        }
+    }
+}
+
+function evalHydroHawk() {
+    let bot = STATE.bots.bot2;
+    if(!bot.isRunning) return;
+
+    for (let i = bot.positions.length - 1; i >= 0; i--) {
+        let p = bot.positions[i];
+        if(!isSettled(p.entryDay)) continue;
+        let md = STATE.marketData[p.sym];
+        let ind = getIndicators(p.sym);
+        if(ind.ema9 < ind.ema21) executeTrade('bot2', 'SELL', p.sym, p.kitta, md.current, "EMA9 crossed below EMA21 (Trend reversal)");
+        else if((md.current - p.entry)/p.entry <= -0.05) executeTrade('bot2', 'SELL', p.sym, p.kitta, md.current, "Hard stop loss (-5%)");
+    }
+
+    if(bot.positions.length >= 5) return;
+    for(let sym of Object.keys(STATE.marketData)) {
+        let ind = getIndicators(sym);
+        if(ind.sec !== SECTORS.HYDRO || ind.circuit === "UC") continue;
+        if(bot.positions.find(p => p.sym === sym)) continue;
+
+        if(ind.ema9 > ind.ema21 && ind.macdLine > 0 && ind.rsi14 < 65) {
+            let kitta = Math.floor((bot.port * 0.15) / ind.cur);
+            if(kitta > 0) executeTrade('bot2', 'BUY', sym, kitta, ind.cur, "Hydro momentum: EMA9>21 and MACD positive.");
+            break;
+        }
+    }
+}
+
+function evalDividend() {
+    let bot = STATE.bots.bot3;
+    if(!bot.isRunning) return;
+    // Simplification: Buy quality dividend stocks when RSI < 40
+    for (let i = bot.positions.length - 1; i >= 0; i--) {
+        let p = bot.positions[i];
+        if(!isSettled(p.entryDay)) continue;
+        let ind = getIndicators(p.sym);
+        if(ind.rsi14 > 70) executeTrade('bot3', 'SELL', p.sym, p.kitta, ind.cur, "Dividend stock overbought, capturing capital gains.");
+        else if((ind.cur - p.entry)/p.entry <= -0.08) executeTrade('bot3', 'SELL', p.sym, p.kitta, ind.cur, "Stop loss exceeded (-8%)");
+    }
+
+    if(bot.positions.length >= 4) return;
+    for(let sym of Object.keys(STATE.marketData)) {
+        let ind = getIndicators(sym);
+        if(ind.cls !== "A" || ind.circuit === "UC") continue;
+        if(bot.positions.find(p => p.sym === sym)) continue;
+
+        if(ind.rsi14 < 40) {
+            let kitta = Math.floor((bot.port * 0.20) / ind.cur);
+            if(kitta > 0) executeTrade('bot3', 'BUY', sym, kitta, ind.cur, "Accumulating Class A stock for upcoming dividend/book closure.");
+            break;
+        }
+    }
+}
+
+function evalApex() {
+    let bot = STATE.bots.bot4;
+    if(!bot.isRunning) return;
+
+    for (let i = bot.positions.length - 1; i >= 0; i--) {
+        let p = bot.positions[i];
+        if(!isSettled(p.entryDay)) continue;
+        let md = STATE.marketData[p.sym];
+        let chg = (md.current - p.entry)/p.entry;
+        if(chg >= 0.05) executeTrade('bot4', 'SELL', p.sym, p.kitta, md.current, "Strict take profit (+5%) hit.");
+        else if(chg <= -0.03) executeTrade('bot4', 'SELL', p.sym, p.kitta, md.current, "Strict stop loss (-3%) hit.");
+    }
+
+    if(bot.positions.length >= 3) return;
+    for(let sym of Object.keys(STATE.marketData)) {
+        let ind = getIndicators(sym);
+        if(ind.cls !== "A" || ind.circuit !== "NONE") continue;
+        if(bot.positions.find(p => p.sym === sym)) continue;
+
+        // Apex needs 100/100 score. Here we use 4 strict conditions.
+        if(ind.rsi14 >= 30 && ind.rsi14 <= 45 && ind.ema9 > ind.ema21 && ind.macdLine > 0) {
+            let kitta = Math.floor((bot.port * 0.15) / ind.cur);
+            if(kitta > 0) executeTrade('bot4', 'BUY', sym, kitta, ind.cur, "APEX 100/100 Score: RSI 30-45, Bullish MACD/EMA, Class A.");
+            break;
+        }
+    }
+}
+
+function runBots() {
+    if(!STATE.isRunning) return;
+    if(STATE.marketStatus !== "OPEN") return;
+
+    evalSentinel();
+    evalHydroHawk();
+    evalDividend();
+    evalApex();
+}
+
+// --- 6. UI & RENDERING ---
+let chartInstance = null;
+
+function initChart() {
+    let ctx = document.getElementById('equityChart').getContext('2d');
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Sentinel', data: [], borderColor: '#00c8ff', borderWidth: 2, tension: 0.2, pointRadius: 0 },
+                { label: 'Hydro Hawk', data: [], borderColor: '#00ff88', borderWidth: 2, tension: 0.2, pointRadius: 0 },
+                { label: 'Dividend', data: [], borderColor: '#ffd700', borderWidth: 2, tension: 0.2, pointRadius: 0 },
+                { label: 'Apex', data: [], borderColor: '#dc143c', borderWidth: 2, tension: 0.2, pointRadius: 0 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#e0e0e0' } } },
+            scales: {
+                y: { grid: { color: '#2a2a3e' }, ticks: { color: '#8b8b9e' } },
+                x: { grid: { color: '#2a2a3e' }, ticks: { color: '#8b8b9e', maxTicksLimit: 10 } }
+            }
+        }
+    });
+}
+
+function updateChartData() {
+    STATE.chartData.labels.push(`Day ${STATE.simDayTracker}`);
+    STATE.chartData.bot1.push(STATE.bots.bot1.port);
+    STATE.chartData.bot2.push(STATE.bots.bot2.port);
+    STATE.chartData.bot3.push(STATE.bots.bot3.port);
+    STATE.chartData.bot4.push(STATE.bots.bot4.port);
+    
+    if(STATE.chartData.labels.length > 50) {
+        STATE.chartData.labels.shift();
+        STATE.chartData.bot1.shift();
+        STATE.chartData.bot2.shift();
+        STATE.chartData.bot3.shift();
+        STATE.chartData.bot4.shift();
+    }
+    if(chartInstance) {
+        chartInstance.data.labels = STATE.chartData.labels;
+        chartInstance.data.datasets[0].data = STATE.chartData.bot1;
+        chartInstance.data.datasets[1].data = STATE.chartData.bot2;
+        chartInstance.data.datasets[2].data = STATE.chartData.bot3;
+        chartInstance.data.datasets[3].data = STATE.chartData.bot4;
+        chartInstance.update('none');
+    }
+}
+
+function updateUI() {
+    // Top Bar
+    let nst = getNST();
+    document.getElementById("nst-clock").innerText = `NST: ${nst.getUTCHours().toString().padStart(2,'0')}:${nst.getUTCMinutes().toString().padStart(2,'0')}:${nst.getUTCSeconds().toString().padStart(2,'0')}`;
+    document.getElementById("nepse-index-val").innerText = STATE.nepseIndex.toFixed(2);
+    
+    STATE.marketStatus = checkMarketStatus();
+    let banner = document.getElementById("market-status-banner");
+    if(STATE.marketStatus === "OPEN") {
+        banner.innerText = "🟢 MARKET OPEN — Regular Session";
+        banner.style.color = "var(--profit-green)";
+    } else {
+        banner.innerText = `🔴 MARKET CLOSED (${STATE.marketStatus})`;
+        banner.style.color = "var(--loss-red)";
+    }
+
+    let tPort = 0;
+    let tFees = 0;
+    
+    // Update Bots
+    ['bot1', 'bot2', 'bot3', 'bot4'].forEach(b => {
+        let bot = STATE.bots[b];
+        let pval = bot.cash;
+        let unsettled = 0;
+        bot.positions.forEach(p => { 
+            pval += (p.kitta * STATE.marketData[p.sym].current);
+            if(!isSettled(p.entryDay)) unsettled++;
+        });
+        bot.port = pval;
+        tPort += pval;
+        tFees += bot.fees;
+        
+        let pnl = pval - 10000;
+        let pnlEl = document.getElementById(`${b}-pnl`);
+        pnlEl.innerText = `${pnl>=0?'+':''}${formatNPR(pnl)}`;
+        pnlEl.className = pnl >= 0 ? 'text-green' : 'text-red';
+        
+        document.getElementById(`${b}-port`).innerText = formatNPR(pval);
+        document.getElementById(`${b}-cash`).innerText = formatNPR(bot.cash);
+        document.getElementById(`${b}-open`).innerText = `${bot.positions.length} / ${unsettled}`;
+        
+        let totalT = bot.wins + bot.losses;
+        document.getElementById(`${b}-winrate`).innerText = totalT > 0 ? ((bot.wins/totalT)*100).toFixed(1) + '%' : '0.0%';
+    });
+
+    document.getElementById("total-port-val").innerText = formatNPR(tPort);
+    let netPnl = tPort - 40000;
+    let netPct = (netPnl / 40000) * 100;
+    document.getElementById("total-pnl-val").innerText = `${netPnl>=0?'+':''}${formatNPR(netPnl)} (${netPct.toFixed(2)}%)`;
+    document.getElementById("total-fees").innerText = formatNPR(tFees);
+
+    // Tables
+    updateScannerTable();
+    updatePositionsTable();
+    updateHistoryTable();
+}
+
+function updateScannerTable() {
+    let tb = document.querySelector("#table-scanner tbody");
+    tb.innerHTML = "";
+    Object.keys(STATE.marketData).forEach(sym => {
+        let md = STATE.marketData[sym];
+        let ind = getIndicators(sym);
+        if(!ind) return;
+        
+        let chg = ((md.current - md.prevClose)/md.prevClose)*100;
+        let circuitHtml = "";
+        if(md.circuit === "UC") circuitHtml = `<span class="badge uc">UC</span>`;
+        if(md.circuit === "LC") circuitHtml = `<span class="badge lc">LC</span>`;
+
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><strong>${sym}</strong> ${circuitHtml}</td>
+            <td>${md.sec}</td>
+            <td><span class="badge a">${md.cls}</span></td>
+            <td>${formatNPR(md.current)}</td>
+            <td class="${chg>=0?'text-green':'text-red'}">${chg>=0?'+':''}${chg.toFixed(2)}%</td>
+            <td>${ind.rsi14.toFixed(1)}</td>
+            <td>${ind.ema9.toFixed(0)} / ${ind.ema21.toFixed(0)}</td>
+            <td>${ind.macdLine.toFixed(2)}</td>
+        `;
+        tb.appendChild(tr);
+    });
+}
+
+function updatePositionsTable() {
+    let tb = document.querySelector("#table-positions tbody");
+    tb.innerHTML = "";
+    ['bot1', 'bot2', 'bot3', 'bot4'].forEach(b => {
+        let bot = STATE.bots[b];
+        bot.positions.forEach(p => {
+            let md = STATE.marketData[p.sym];
+            let curVal = p.kitta * md.current;
+            let pnl = curVal - p.val;
+            let pnlPct = (pnl / p.val) * 100;
+            let settled = isSettled(p.entryDay);
+            
+            let tr = document.createElement("tr");
+            tr.innerHTML = `
+                <td>${bot.name}</td>
+                <td><strong>${p.sym}</strong></td>
+                <td>${p.kitta}</td>
+                <td>${formatNPR(p.entry)}</td>
+                <td>${formatNPR(md.current)}</td>
+                <td class="${pnl>=0?'text-green':'text-red'}">${pnl>=0?'+':''}${pnlPct.toFixed(2)}%</td>
+                <td class="${pnl>=0?'text-green':'text-red'}">${formatNPR(pnl)}</td>
+                <td>${settled ? '<span class="text-green">Settled</span>' : '<span class="text-yellow">T+2 Pending</span>'}</td>
+            `;
+            tb.appendChild(tr);
+        });
+    });
+}
+
+function updateHistoryTable() {
+    let tb = document.querySelector("#table-history tbody");
+    tb.innerHTML = "";
+    // Aggregate and sort history
+    let allH = [];
+    ['bot1', 'bot2', 'bot3', 'bot4'].forEach(b => {
+        STATE.bots[b].history.forEach(h => allH.push({bName: STATE.bots[b].name, ...h}));
+    });
+    allH.reverse().slice(0, 30).forEach(h => {
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${h.bName}</td>
+            <td><strong>${h.sym}</strong></td>
+            <td>${formatNPR(h.entry)}</td>
+            <td>${formatNPR(h.exit)}</td>
+            <td class="${h.net>=0?'text-green':'text-red'}">${formatNPR(h.net)}</td>
+            <td>${h.daysHeld}</td>
+            <td>${h.reason.split('(')[0]}</td>
+        `;
+        tb.appendChild(tr);
+    });
+}
+
+function switchMainTab(tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('tab-scanner').style.display = 'none';
+    document.getElementById('tab-positions').style.display = 'none';
+    document.getElementById('tab-history').style.display = 'none';
+    document.getElementById(`tab-${tabId}`).style.display = 'block';
+}
+
+function toggleBotEngine() {
+    STATE.isRunning = !STATE.isRunning;
+    let btn = document.getElementById("btn-master-play");
+    if(STATE.isRunning) {
+        btn.innerText = "⏸ PAUSE ALL BOTS";
+        btn.style.backgroundColor = "var(--loss-red)";
+        logReasoning("SYSTEM", "All trading engines STARTED.");
+    } else {
+        btn.innerText = "▶ RUN ALL BOTS";
+        btn.style.backgroundColor = "";
+        logReasoning("SYSTEM", "All trading engines PAUSED.");
+    }
+}
+
+// --- 7. CORE LOOP & ADMIN ---
+function resetAll() {
+    if(confirm("Are you sure? This deletes all paper trading history.")) {
+        localStorage.removeItem('nepse_sim_state');
+        location.reload();
+    }
+}
+
+function saveState() {
+    localStorage.setItem('nepse_sim_state', JSON.stringify(STATE));
+}
+
+function loadState() {
+    let saved = localStorage.getItem('nepse_sim_state');
+    if(saved) {
+        try {
+            let p = JSON.parse(saved);
+            STATE = p;
+            logReasoning("SYSTEM", "Previous session restored successfully.");
+        } catch(e) { console.error("Save corrupted"); }
+    } else {
+        initMarketData();
+    }
+}
+
+document.getElementById('cfg-market-hours').addEventListener('change', (e) => CONFIG.respectHours = e.target.checked);
+document.getElementById('cfg-real-fees').addEventListener('change', (e) => CONFIG.respectFees = e.target.checked);
+document.getElementById('cfg-t2').addEventListener('change', (e) => CONFIG.respectT2 = e.target.checked);
+document.getElementById('cfg-circuit').addEventListener('change', (e) => CONFIG.respectCircuit = e.target.checked);
+
+// Initialization
+window.onload = () => {
+    loadState();
+    initChart();
+    updateChartData();
+    
+    setInterval(() => {
+        tickMarket();
+        runBots();
+        updateUI();
+    }, CONFIG.tickMs);
+
+    setInterval(saveState, 10000); // Auto-save every 10s
+    
+    // Timer
+    setInterval(() => {
+        let diff = Math.floor((Date.now() - STATE.sessionStart)/1000);
+        let m = Math.floor(diff/60);
+        let s = diff % 60;
+        document.getElementById("session-time").innerText = `${m}m ${s}s`;
+    }, 1000);
+};
+
+</script>
+</body>
+</html>
