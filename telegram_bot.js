@@ -24,7 +24,7 @@ const PORT = process.env.PORT || 10000;
 // Serve the HTML file directly when someone visits the URL
 app.get('/', (req, res) => {
     try {
-        const htmlContent = fs.readFileSync('./nepse_simulator.html', 'utf8');
+        const htmlContent = fs.readFileSync('./index.html', 'utf8');
         res.send(htmlContent);
     } catch (err) {
         res.status(500).send("Error loading simulator UI.");
