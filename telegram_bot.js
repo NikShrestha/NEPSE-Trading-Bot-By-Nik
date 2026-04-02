@@ -19,7 +19,7 @@ let STATE = {
 // WEB SERVER (To keep Render happy and provide a status page)
 // ==========================================
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000; // Render strongly prefers port 10000 by default
 
 app.get('/', (req, res) => {
     res.send(`
@@ -45,7 +45,8 @@ app.get('/', (req, res) => {
     `);
 });
 
-app.listen(PORT, () => {
+// IMPORTANT: Use 0.0.0.0 host so Render's port scanner can detect it
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Web server is running on port ${PORT}`);
 });
 
