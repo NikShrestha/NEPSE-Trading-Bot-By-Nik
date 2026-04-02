@@ -16,36 +16,22 @@ let STATE = {
 };
 
 // ==========================================
-// WEB SERVER (To keep Render happy and provide a status page)
+// WEB SERVER (To host the full HTML Simulator)
 // ==========================================
 const app = express();
-const PORT = process.env.PORT || 10000; // Render strongly prefers port 10000 by default
+const PORT = process.env.PORT || 10000; 
 
+// Serve the HTML file directly when someone visits the URL
 app.get('/', (req, res) => {
-    res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>NEPSE Bot Status</title>
-            <style>
-                body { background-color: #080810; color: #00c8ff; font-family: monospace; text-align: center; padding-top: 50px; }
-                h1 { color: #00ff88; }
-                .container { border: 1px solid #1a1a2e; padding: 20px; border-radius: 10px; display: inline-block; background-color: #0f0f20;}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>🇳🇵 NEPSE Telegram Bot is ONLINE</h1>
-                <p>The backend trading engine is actively running in the cloud.</p>
-                <p>Check your Telegram app for live trade alerts and daily portfolio summaries!</p>
-                <p style="color: #8b8b9e; margin-top: 20px;">Total Simulated Days Elapsed: ${STATE.simDayTracker}</p>
-            </div>
-        </body>
-        </html>
-    `);
+    try {
+        const htmlContent = fs.readFileSync('./nepse_simulator.html', 'utf8');
+        res.send(htmlContent);
+    } catch (err) {
+        res.status(500).send("Error loading simulator UI.");
+    }
 });
 
-// IMPORTANT: Use 0.0.0.0 host so Render's port scanner can detect it
+// IMPORTANT: Use 0.0.0.0 host
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🌐 Web server is running on port ${PORT}`);
 });
@@ -121,11 +107,11 @@ function loadDatabase() {
     if (fs.existsSync(CONFIG.dbFile)) {
         console.log("💾 Loading previous session from database...");
         STATE = JSON.parse(fs.readFileSync(CONFIG.dbFile, 'utf8'));
-        sendTelegram("🔄 <b>NEPSE Bot Simulator Re-started!</b>\nRestored your previous balances and positions.");
+        sendTelegram("🔄 <b>NEPSE Bot Simulator Re-started & Connected!</b>\nRestored your previous balances and positions.\n\n🌐 <b>Live Dashboard:</b> https://nepse-telegram-bot-production.up.railway.app/");
     } else {
         console.log("🆕 Starting fresh session...");
         initMarketData();
-        sendTelegram("✅ <b>NEPSE Bot Simulator Started!</b>\nAll 4 bots are now scanning the market 24/7. Waiting for signals...");
+        sendTelegram("✅ <b>NEPSE Bot Simulator Started & Connected!</b>\n\n🌐 <b>Live Dashboard:</b> https://nepse-telegram-bot-production.up.railway.app/\n\nAll 4 bots are now scanning the market 24/7. Waiting for signals...");
     }
 }
 
