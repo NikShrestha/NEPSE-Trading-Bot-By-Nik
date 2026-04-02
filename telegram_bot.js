@@ -39,8 +39,8 @@ app.listen(PORT, '0.0.0.0', () => {
 // ==========================================
 // 🔴 ENTER YOUR TELEGRAM DETAILS HERE 🔴
 // ==========================================
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '8626490950:AAE331dJW8upggikCI4Nu2NJpbbjA9ufcFg';
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '5612804722';
+const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN || '';
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || '';
 
 // ==========================================
 // CONFIGURATION
