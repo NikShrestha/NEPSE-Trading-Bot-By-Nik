@@ -192,7 +192,7 @@ function tickMarket() {
         });
 
         if (settledThisTick.length > 0) {
-            sendTelegram(`⏱ <b>T+2 Settlement Cleared!</b>\nThe following shares are now available to sell:\n${settledThisTick.join('\n')}`);
+            console.log(`⏱ T+2 Settlement Cleared for: ${settledThisTick.length} positions.`);
         }
     }
 }
@@ -244,16 +244,6 @@ function executeTrade(botId, type, sym, kitta, price, reason) {
             bot.fees += fees;
             bot.positions.push({ sym, kitta, entry: price, val, entryDay: STATE.simDayTracker, feesPaid: fees });
             
-            let msg = `🟢 <b>NEW BUY TRIGGERED</b> 🟢\n\n`;
-            msg += `<b>Bot:</b> ${bot.name}\n`;
-            msg += `<b>Stock:</b> ${sym} (${kitta} Kitta)\n`;
-            msg += `<b>Price:</b> ${formatNPR(price)}\n`;
-            msg += `<b>Cost:</b> ${formatNPR(val)}\n`;
-            msg += `<b>Taxes & Fees Paid:</b> ${formatNPR(fees)}\n\n`;
-            msg += `<b>🧠 Bot Reasoning:</b>\n<i>${reason}</i>\n\n`;
-            msg += `<i>Note: Shares will clear T+2 settlement in 2 trading days before they can be sold.</i>`;
-            
-            sendTelegram(msg);
             console.log(`[BUY] ${bot.name} -> ${sym}`);
         }
     } else {
@@ -270,18 +260,6 @@ function executeTrade(botId, type, sym, kitta, price, reason) {
             if(net > 0) bot.wins++; else bot.losses++;
             bot.positions.splice(posIdx, 1);
             
-            let emoji = net >= 0 ? '✅' : '🚨';
-            let msg = `${emoji} <b>POSITION CLOSED</b> ${emoji}\n\n`;
-            msg += `<b>Bot:</b> ${bot.name}\n`;
-            msg += `<b>Stock:</b> ${sym} (${kitta} Kitta)\n`;
-            msg += `<b>Entry Price:</b> ${formatNPR(pos.entry)}\n`;
-            msg += `<b>Exit Price:</b> ${formatNPR(price)}\n\n`;
-            msg += `<b>Net P&L:</b> ${net >= 0 ? '+' : ''}${formatNPR(net)}\n`;
-            msg += `<b>Taxes & Fees Paid:</b> ${formatNPR(fees + pos.feesPaid)}\n`;
-            msg += `<b>Days Held:</b> ${daysHeld} days\n\n`;
-            msg += `<b>🧠 Bot Reasoning:</b>\n<i>${reason}</i>`;
-            
-            sendTelegram(msg);
             console.log(`[SELL] ${bot.name} -> ${sym} (P&L: ${net})`);
         }
     }
@@ -389,27 +367,49 @@ setInterval(() => {
     saveDatabase();
 }, CONFIG.saveMs);
 
-// Portfolio Summary to Telegram every 2 hours (120 * 60 * 1000)
+// Fleet Overview to Telegram every 1 hour (60 * 60 * 1000)
 setInterval(() => {
     let tPort = 0, openPos = 0;
+    let msg = `📊 <b>NEPSE BOT FLEET OVERVIEW</b> 📊\n\n`;
+    
     ['bot1', 'bot2', 'bot3', 'bot4'].forEach(b => {
-        let bVal = STATE.bots[b].cash;
-        STATE.bots[b].positions.forEach(p => { 
+        let bot = STATE.bots[b];
+        let bVal = bot.cash;
+        bot.positions.forEach(p => { 
             bVal += (p.kitta * STATE.marketData[p.sym].current); 
             openPos++;
         });
         tPort += bVal;
+        let bPnl = bVal - 10000;
+        msg += `<b>${bot.name}</b>: ${formatNPR(bVal)} (${bPnl >= 0 ? '+' : ''}${formatNPR(bPnl)})\n`;
     });
     
     let net = tPort - 40000;
     let icon = net >= 0 ? '📈' : '📉';
-    let msg = `${icon} <b>DAILY PORTFOLIO SUMMARY</b> ${icon}\n\n`;
-    msg += `<b>Total Value:</b> ${formatNPR(tPort)}\n`;
+    msg += `\n${icon} <b>Total Fleet Value:</b> ${formatNPR(tPort)}\n`;
     msg += `<b>Total Profit/Loss:</b> ${net >= 0 ? '+' : ''}${formatNPR(net)}\n`;
     msg += `<b>Active Positions:</b> ${openPos}\n`;
     msg += `<b>NEPSE Index:</b> ${STATE.nepseIndex.toFixed(2)}\n\n`;
-    msg += `<i>The bots are monitoring the market...</i>`;
+    msg += `<i>See Live Dashboard for details:\nhttps://nepse-telegram-bot-production.up.railway.app/</i>`;
+    
     sendTelegram(msg);
-}, 2 * 60 * 60 * 1000);
+}, 60 * 60 * 1000);
+
+// Educational Tips Array
+const EDUCATION_TIPS = [
+    "🇳🇵 <b>NEPSE Tip: T+2 Settlement</b>\nIn Nepal, shares take 2 business days to arrive in your Demat account after buying. You cannot day-trade the same shares on the same day!",
+    "🇳🇵 <b>NEPSE Tip: Circuit Breakers</b>\nNEPSE restricts daily stock price movements to ±10%. If a stock hits +10% (Upper Circuit), no one can buy. If it hits -10% (Lower Circuit), no one can sell.",
+    "🇳🇵 <b>NEPSE Tip: Capital Gains Tax (CGT)</b>\nSelling shares for a profit? NEPSE deducts 7.5% tax if held for less than a year, and 5% if held for more than a year. No tax on losses!",
+    "🇳🇵 <b>NEPSE Tip: Kitta System</b>\nUnlike crypto, you cannot buy fractions of a share in Nepal. You must buy whole units, known as 'Kitta' (e.g., 10 Kitta, 50 Kitta).",
+    "🇳🇵 <b>NEPSE Tip: SEBON & DP Fees</b>\nEvery trade on NEPSE includes a Broker Commission (0.3-0.4%), a SEBON regulatory fee (0.015%), and a flat DP charge of रू 25 per stock.",
+    "🇳🇵 <b>NEPSE Tip: Hydropower Sector</b>\nHydropower is the most active sector in Nepal. Stock prices often fluctuate based on seasons (monsoon = high production, dry season = low production).",
+    "🇳🇵 <b>NEPSE Tip: Book Closure Dates</b>\nCompanies announce 'Book Closure' dates for dividends. You must own the shares before this date to get the dividend. Share prices usually drop by the dividend amount the day after!"
+];
+
+// Educational Message every 3 hours (3 * 60 * 60 * 1000)
+setInterval(() => {
+    const tip = EDUCATION_TIPS[Math.floor(Math.random() * EDUCATION_TIPS.length)];
+    sendTelegram(`📚 <b>NEPSE Education Time</b>\n\n${tip}`);
+}, 3 * 60 * 60 * 1000);
 
 console.log("🚀 NEPSE Backend Engine is running! Press Ctrl+C to stop.");
