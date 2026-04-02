@@ -2,6 +2,19 @@ import fs from 'fs';
 import fetch from 'node-fetch';
 import express from 'express';
 
+// Initialize STATE first so the web server can read it
+let STATE = {
+    simDayTracker: 0,
+    nepseIndex: 2100,
+    bots: {
+        bot1: { id: "bot1", name: "🛡️ Sentinel", port: 10000, cash: 10000, positions: [], wins: 0, losses: 0, fees: 0 },
+        bot2: { id: "bot2", name: "💧 Hydro Hawk", port: 10000, cash: 10000, positions: [], wins: 0, losses: 0, fees: 0 },
+        bot3: { id: "bot3", name: "💰 Dividend", port: 10000, cash: 10000, positions: [], wins: 0, losses: 0, fees: 0 },
+        bot4: { id: "bot4", name: "👑 Apex NEPSE", port: 10000, cash: 10000, positions: [], wins: 0, losses: 0, fees: 0 }
+    },
+    marketData: {}
+};
+
 // ==========================================
 // WEB SERVER (To keep Render happy and provide a status page)
 // ==========================================
@@ -71,18 +84,6 @@ const STOCK_UNIVERSE = [
     { sym: "SKBBL", sec: SECTORS.MICRO, cls: "A", base: 2100, vol: 0.05 },
     { sym: "NTC",   sec: SECTORS.TELECOM, cls: "A", base: 950, vol: 0.01 }
 ];
-
-let STATE = {
-    simDayTracker: 0,
-    nepseIndex: 2100,
-    bots: {
-        bot1: { id: "bot1", name: "🛡️ Sentinel", port: 10000, cash: 10000, positions: [], wins: 0, losses: 0, fees: 0 },
-        bot2: { id: "bot2", name: "💧 Hydro Hawk", port: 10000, cash: 10000, positions: [], wins: 0, losses: 0, fees: 0 },
-        bot3: { id: "bot3", name: "💰 Dividend", port: 10000, cash: 10000, positions: [], wins: 0, losses: 0, fees: 0 },
-        bot4: { id: "bot4", name: "👑 Apex NEPSE", port: 10000, cash: 10000, positions: [], wins: 0, losses: 0, fees: 0 }
-    },
-    marketData: {}
-};
 
 // ==========================================
 // TELEGRAM INTEGRATION
