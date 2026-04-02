@@ -1,5 +1,40 @@
 import fs from 'fs';
 import fetch from 'node-fetch';
+import express from 'express';
+
+// ==========================================
+// WEB SERVER (To keep Render happy and provide a status page)
+// ==========================================
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>NEPSE Bot Status</title>
+            <style>
+                body { background-color: #080810; color: #00c8ff; font-family: monospace; text-align: center; padding-top: 50px; }
+                h1 { color: #00ff88; }
+                .container { border: 1px solid #1a1a2e; padding: 20px; border-radius: 10px; display: inline-block; background-color: #0f0f20;}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>🇳🇵 NEPSE Telegram Bot is ONLINE</h1>
+                <p>The backend trading engine is actively running in the cloud.</p>
+                <p>Check your Telegram app for live trade alerts and daily portfolio summaries!</p>
+                <p style="color: #8b8b9e; margin-top: 20px;">Total Simulated Days Elapsed: ${STATE.simDayTracker}</p>
+            </div>
+        </body>
+        </html>
+    `);
+});
+
+app.listen(PORT, () => {
+    console.log(`🌐 Web server is running on port ${PORT}`);
+});
 
 // ==========================================
 // 🔴 ENTER YOUR TELEGRAM DETAILS HERE 🔴

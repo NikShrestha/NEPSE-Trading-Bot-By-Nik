@@ -8,6 +8,7 @@
     "start": "node telegram_bot.js"
   },
   "dependencies": {
+    "express": "^5.2.1",
     "node-fetch": "^3.3.2"
   }
 }
